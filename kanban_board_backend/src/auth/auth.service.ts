@@ -1,9 +1,7 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import { JwtService } from '@nestjs/jwt';
-import { RegisterDto } from './dto/register.dto';
-import { LoginDto } from './dto/login.dto';
 import { User } from '@prisma/client';
 
 @Injectable()
@@ -13,9 +11,7 @@ export class AuthService {
     private jwt: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
-    const { username, password } = registerDto;
-
+  async register(username: string, password: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { username },
     });
@@ -36,8 +32,7 @@ export class AuthService {
     return { id: user.id };
   }
 
-  async login(loginDto: LoginDto) {
-    const { username, password } = loginDto;
+  async login(username: string, password: string) {
     const user: User | null = await this.prisma.user.findUnique({ where: { username } });
     if (!user) throw new UnauthorizedException('User not found');
 
