@@ -1,15 +1,64 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id       String         @id @default(uuid())
+  password String
+  name     String
+  boards   BoardMember[]
+  tasks    TaskAssignee[]
+}
+
+model Board {
+  id      String        @id @default(uuid())
+  title   String
+  members BoardMember[]
+  columns Column[]
+}
+
+model BoardMember {
+  id      String @id @default(uuid())
+  userId  String
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
+  user    User   @relation(fields: [userId], references: [id])
+}
+
+model Column {
+  id      String @id @default(uuid())
+  name    String
+  order   Int
+  boardId String
+  board   Board  @relation(fields: [boardId], references: [id])
+  tasks   Task[]
+}
+
+model Task {
+  id        String         @id @default(uuid())
+  title     String
+  order     Int
+  columnId  String
+  column    Column         @relation(fields: [columnId], references: [id])
+  assignees TaskAssignee[]
+  tags      Tag[]          @relation("TaskTags")
+}
+
+model Tag {
+  id    String @id @default(uuid())
+  name  String
+  tasks Task[] @relation("TaskTags")
+}
+
+model TaskAssignee {
+  id     String @id @default(uuid())
+  userId String
+  taskId String
+  task   Task   @relation(fields: [taskId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
 }
