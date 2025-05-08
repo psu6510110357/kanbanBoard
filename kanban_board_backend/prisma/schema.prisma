@@ -44,8 +44,6 @@ model Column {
   boardId String
   board   Board  @relation(fields: [boardId], references: [id])
   tasks   Task[]
-
-  @@unique([boardId, order])
 }
 
 model Task {
