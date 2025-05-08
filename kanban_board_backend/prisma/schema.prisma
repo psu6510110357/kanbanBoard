@@ -8,18 +8,23 @@ datasource db {
 }
 
 model User {
-  id       String         @id @default(uuid())
-  password String
-  username String         @unique
-  boards   BoardMember[]
-  tasks    TaskAssignee[]
+  id          String         @id @default(uuid())
+  password    String
+  username    String         @unique
+  ownedBoards Board[]        @relation("UserOwnedBoards")
+  boards      BoardMember[]
+  tasks       TaskAssignee[]
 }
 
 model Board {
-  id      String        @id @default(uuid())
-  title   String
-  members BoardMember[]
-  columns Column[]
+  id        String        @id @default(uuid())
+  title     String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  ownerId   String
+  owner     User          @relation("UserOwnedBoards", fields: [ownerId], references: [id])
+  members   BoardMember[]
+  columns   Column[]
 }
 
 model BoardMember {
@@ -28,6 +33,8 @@ model BoardMember {
   boardId String
   board   Board  @relation(fields: [boardId], references: [id])
   user    User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, boardId])
 }
 
 model Column {
