@@ -4,6 +4,7 @@ import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { AuthRequest } from 'src/interface/jwtRequest';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
+import { AddBoardMemberDto } from './dto/add-board-member.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('board')
@@ -13,6 +14,11 @@ export class BoardController {
   @Post()
   create(@Body() dto: CreateBoardDto, @Req() req: AuthRequest) {
     return this.boardService.create(dto, req.user.userId);
+  }
+
+  @Post(':id/members')
+  addMember(@Param('id') boardId: string, @Body() dto: AddBoardMemberDto) {
+    return this.boardService.addMember(boardId, dto.userId);
   }
 
   @Get()

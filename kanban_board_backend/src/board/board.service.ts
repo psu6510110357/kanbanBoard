@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -55,15 +55,55 @@ export class BoardService {
   }
 
   async update(id: string, dto: UpdateBoardDto) {
-    return this.prisma.board.update({
-      where: { id },
-      data: dto,
-    });
+    try {
+      const updatedBoard = await this.prisma.board.update({
+        where: { id },
+        data: dto,
+      });
+      return updatedBoard;
+    } catch (error) {
+      throw new Error(`Board with ID ${id} not found.` + error);
+    }
   }
 
   async remove(id: string) {
+    const board = await this.prisma.board.findUnique({
+      where: { id },
+    });
+
+    if (!board) {
+      throw new Error(`Board with ID ${id} not found.`);
+    }
+
+    // Log the deletion message
+    console.log(`Board titled "${board.title}" was deleted`);
+
     return this.prisma.board.delete({
       where: { id },
+    });
+  }
+
+  async addMember(boardId: string, userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // check for duplicate
+    const exists = await this.prisma.boardMember.findUnique({
+      where: {
+        userId_boardId: {
+          userId,
+          boardId,
+        },
+      },
+    });
+
+    if (exists) throw new ConflictException('User is already a board member');
+
+    return this.prisma.boardMember.create({
+      data: {
+        boardId,
+        userId,
+      },
     });
   }
 }
