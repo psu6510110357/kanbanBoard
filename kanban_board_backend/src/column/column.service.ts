@@ -34,7 +34,10 @@ export class ColumnService {
     });
 
     if (!board) throw new NotFoundException('Board not found');
-    return board.columns;
+    return this.prisma.column.findMany({
+      where: { boardId },
+      orderBy: { order: 'asc' },
+    });
   }
 
   async updateNameColumn(columnId: string, name?: string) {

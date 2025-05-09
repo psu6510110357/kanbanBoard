@@ -7,9 +7,17 @@ import { ConfigModule } from '@nestjs/config';
 import { BoardModule } from './board/board.module';
 import { ColumnService } from './column/column.service';
 import { ColumnModule } from './column/column.module';
+import { TaskModule } from './task/task.module';
 
 @Module({
-  imports: [ConfigModule.forRoot(), PrismaModule, AuthModule, BoardModule, ColumnModule],
+  imports: [
+    ConfigModule.forRoot(),
+    PrismaModule,
+    AuthModule,
+    BoardModule,
+    ColumnModule,
+    TaskModule,
+  ],
   controllers: [AppController],
   providers: [AppService, ColumnService],
 })

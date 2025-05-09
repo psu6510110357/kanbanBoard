@@ -19,12 +19,12 @@ model User {
 model Board {
   id        String        @id @default(uuid())
   title     String
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
   ownerId   String
   owner     User          @relation("UserOwnedBoards", fields: [ownerId], references: [id])
   members   BoardMember[]
   columns   Column[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
 
 model BoardMember {
@@ -44,6 +44,8 @@ model Column {
   boardId String
   board   Board  @relation(fields: [boardId], references: [id])
   tasks   Task[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   @@unique([boardId, order])
 }
@@ -56,6 +58,8 @@ model Task {
   column    Column         @relation(fields: [columnId], references: [id])
   assignees TaskAssignee[]
   tags      Tag[]          @relation("TaskTags")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 }
 
 model Tag {
