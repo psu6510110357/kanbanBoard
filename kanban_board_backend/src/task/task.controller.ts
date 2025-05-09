@@ -4,6 +4,7 @@ import { CreateTaskDto } from './dto/create-task.dto';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { TaskOrderDto } from './dto/order-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { MoveTaskDto } from './dto/move-task.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -16,6 +17,7 @@ export class TaskController {
     return this.taskService.createTask(columnId, dto.title);
   }
 
+  // Get Tasks
   @Get('columns/:columnId/tasks')
   getTasks(@Param('columnId') columnId: string) {
     return this.taskService.getTasksByColumnId(columnId);
@@ -31,6 +33,12 @@ export class TaskController {
   @Put('tasks/:taskId')
   updateTask(@Param('taskId') taskId: string, @Body() dto: UpdateTaskDto) {
     return this.taskService.updateTask(taskId, dto);
+  }
+
+  // Move Task
+  @Put('tasks/:taskId/move')
+  moveTask(@Param('taskId') taskId: string, @Body() dto: MoveTaskDto) {
+    return this.taskService.moveTaskToColumn(taskId, dto.targetColumnId, dto.newOrder);
   }
 
   // Delete Task

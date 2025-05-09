@@ -89,4 +89,47 @@ export class TaskService {
 
     return this.prisma.task.delete({ where: { id: taskId } });
   }
+
+  async moveTaskToColumn(taskId: string, targetColumnId: string, newOrder: number) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+
+    const column = await this.prisma.column.findUnique({ where: { id: targetColumnId } });
+    if (!column) throw new NotFoundException('Target column not found');
+
+    const count = await this.prisma.task.count({
+      where: { columnId: targetColumnId },
+    });
+
+    // Clamp newOrder to be in range [1, count + 1]
+    const clampedOrder = Math.max(1, Math.min(newOrder, count + 1));
+
+    // Temporarily set order to avoid conflict
+    await this.prisma.task.update({
+      where: { id: taskId },
+      data: { order: -1000 },
+    });
+
+    // Shift tasks in target column
+    await this.prisma.task.updateMany({
+      where: {
+        columnId: targetColumnId,
+        order: {
+          gte: clampedOrder,
+        },
+      },
+      data: {
+        order: { increment: 1 },
+      },
+    });
+
+    // Move the task
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        columnId: targetColumnId,
+        order: clampedOrder,
+      },
+    });
+  }
 }
