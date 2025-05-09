@@ -5,6 +5,8 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { TaskOrderDto } from './dto/order-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
 import { MoveTaskDto } from './dto/move-task.dto';
+import { AddTagDto } from './dto/add-tag.dto';
+import { RemoveTagDto } from './dto/remove-tag.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller()
@@ -15,6 +17,18 @@ export class TaskController {
   @Post('columns/:columnId/tasks')
   createTask(@Param('columnId') columnId: string, @Body() dto: CreateTaskDto) {
     return this.taskService.createTask(columnId, dto.title);
+  }
+
+  //Add Tag
+  @Post('tags/add')
+  addTag(@Body() dto: AddTagDto) {
+    return this.taskService.addTagToTask(dto.taskId, dto.name);
+  }
+
+  //Remove Tag
+  @Post('tags/remove')
+  removeTag(@Body() dto: RemoveTagDto) {
+    return this.taskService.removeTagFromTask(dto.taskId, dto.tagId);
   }
 
   // Get Tasks

@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { TaskOrder } from 'src/interface/taskOrder';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -130,6 +135,70 @@ export class TaskService {
         columnId: targetColumnId,
         order: clampedOrder,
       },
+    });
+  }
+
+  async addTagToTask(taskId: string, name: string) {
+    const task = (await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { tags: true },
+    })) as { id: string; tags: { id: string }[] } | null;
+    if (!task) throw new NotFoundException('Task not found');
+
+    let tag = await this.prisma.tag.findFirst({ where: { name } });
+
+    if (!tag) {
+      tag = await this.prisma.tag.create({ data: { name } });
+    }
+
+    // Check if tag is already assigned to task
+    const alreadyLinked = task.tags.some((t) => t.id === tag.id);
+    if (alreadyLinked) {
+      throw new ConflictException('Tag is already attached to this task');
+    }
+
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        tags: {
+          connect: { id: tag.id },
+        },
+      },
+      include: { tags: true },
+    });
+  }
+
+  async removeTagFromTask(taskId: string, tagId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: { tags: true },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
+
+    const tag = await this.prisma.tag.findUnique({
+      where: { id: tagId },
+    });
+
+    if (!tag) {
+      throw new NotFoundException('Tag not found');
+    }
+
+    const isLinked = task.tags.some((t) => t.id === tagId);
+    if (!isLinked) {
+      throw new BadRequestException('This tag is not assigned to the task');
+    }
+
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: {
+        tags: {
+          disconnect: { id: tagId },
+        },
+      },
+      include: { tags: true },
     });
   }
 }
