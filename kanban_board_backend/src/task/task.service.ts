@@ -131,19 +131,16 @@ export class TaskService {
 
     try {
       await this.prisma.$transaction(async (prisma) => {
-        // 1. Delete associated TaskAssignee records
         await prisma.taskAssignee.deleteMany({
           where: { taskId: taskId },
         });
         this.logger.log(`Deleted assignees for task ID: ${taskId}`);
 
-        // 2. Delete the Task
         await prisma.task.delete({
           where: { id: taskId },
         });
         this.logger.log(`Successfully deleted task with ID: ${taskId}`);
 
-        // 3. Reorder the remaining tasks in the same column
         const remainingTasks = await prisma.task.findMany({
           where: { columnId: taskToDelete.columnId, order: { gt: taskToDelete.order } },
           orderBy: { order: 'asc' },
