@@ -45,10 +45,11 @@ git clone https://github.com/your-username/kanban-board-backend.git](https://git
 cd kanban_board_backend
 
 # 2. Create .env file
-cp .env.example .env
+touch .env
 
-DATABASE_URL="postgresql://admin:1234@localhost:5432/db"
-SECRET="my_secret"
+DATABASE_URL=postgresql://admin:1234@localhost:5432/db
+SECRET=my_secret
+PORT=3000
 
 # 3. Build and start containers
 docker-compose up -d --build
@@ -56,7 +57,14 @@ docker-compose up -d --build
 # 4. Run database migration
 docker exec -it kanban_board_server npx prisma migrate dev
 
-# 5. Access your API at http://localhost:3000
+# 5. Install dependencies
+pnpm install
+
+# 6. Start app
+pnpm start
+
+# 7. Access API at:
+http://localhost:3000
 
 📄 API Documentation
 https://.postman.co/workspace/My-Workspace~1a042d22-85c9-4e59-80b5-cc16c889237a/collection/24720169-56ea4c88-aaa6-4a66-bf9f-faae8479dd11?action=share&creator=24720169
@@ -65,5 +73,8 @@ Protected routes require JWT token in Authorization: Bearer <token>
 
 📊 Database ER Diagram
 ![Kanban_Board](https://github.com/user-attachments/assets/98e3b6a9-0b02-4ecf-9b1d-9559d5ff2bf7)
+
+📄 Documentation
+https://docs.google.com/document/d/1ZDXNqpxttpY5gnMbksRr6ojMm5XNOAMyKVuIZFbH60M/edit?usp=sharing
 
 
