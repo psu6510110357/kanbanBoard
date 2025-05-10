@@ -1,8 +1,8 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsString, MinLength } from 'class-validator';
 
 export class CreateBoardDto {
-  @ApiProperty()
+  @Transform(({ value }): string => (typeof value === 'string' ? value.trim() : value))
   @IsString()
   @MinLength(1)
   title: string;

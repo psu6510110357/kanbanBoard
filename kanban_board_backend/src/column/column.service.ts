@@ -1,9 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { ColumnOrder } from './column.interface';
 
 @Injectable()
 export class ColumnService {
+  private readonly logger = new Logger(ColumnService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async createColumn(boardId: string, name: string) {
@@ -54,15 +56,65 @@ export class ColumnService {
     });
   }
 
-  async deleteColumn(columnId: string) {
-    const column = await this.prisma.column.findUnique({
+  async deleteColumn(columnId: string): Promise<void> {
+    const columnToDelete = await this.prisma.column.findUnique({
       where: { id: columnId },
+      include: {
+        tasks: {
+          select: {
+            id: true,
+          },
+        },
+      },
     });
-    if (!column) throw new NotFoundException('Column not found');
 
-    return this.prisma.column.delete({
-      where: { id: columnId },
-    });
+    if (!columnToDelete) {
+      this.logger.warn(`Attempted to delete non-existent column with ID: ${columnId}`);
+      throw new NotFoundException('Column not found');
+    }
+
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        await prisma.taskAssignee.deleteMany({
+          where: {
+            taskId: {
+              in: columnToDelete.tasks.map((task) => task.id),
+            },
+          },
+        });
+
+        await prisma.task.deleteMany({
+          where: {
+            columnId: columnId,
+          },
+        });
+
+        await prisma.column.delete({
+          where: { id: columnId },
+        });
+        this.logger.log(`Successfully deleted column with ID: ${columnId}`);
+
+        const remainingColumns = await prisma.column.findMany({
+          where: { boardId: columnToDelete.boardId, order: { gt: columnToDelete.order } },
+          orderBy: { order: 'asc' },
+        });
+
+        await Promise.all(
+          remainingColumns.map((column, index) =>
+            prisma.column.update({
+              where: { id: column.id },
+              data: { order: columnToDelete.order + index },
+            }),
+          ),
+        );
+        this.logger.log(
+          `Reordered ${remainingColumns.length} columns in board ID: ${columnToDelete.boardId} after deleting column ID: ${columnId}`,
+        );
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting column with ID: ${columnId}: ${error}`);
+      throw error;
+    }
   }
 
   async reorderColumns(boardId: string, columnOrder: ColumnOrder[]) {

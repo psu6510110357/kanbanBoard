@@ -16,9 +16,9 @@ export class BoardOwnerGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
-      .getRequest<AuthRequest<{ id: string }, { id?: string }>>();
+      .getRequest<AuthRequest<{ boardId: string }, { boardId?: string }>>();
     const userId = request.user.userId;
-    const boardId = request.params.id || request.body.id;
+    const boardId = request.params.boardId || request.body.boardId;
 
     if (!boardId) {
       throw new BadRequestException('Board ID is required');

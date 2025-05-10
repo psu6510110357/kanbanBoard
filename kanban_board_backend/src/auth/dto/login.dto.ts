@@ -1,12 +1,15 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsString } from 'class-validator';
+import { IsString, Matches } from 'class-validator';
 
 export class LoginDto {
-  @ApiProperty()
   @IsString()
+  @Matches(/^\S*$/, {
+    message: 'Username cannot contain spaces',
+  })
   username: string;
 
-  @ApiProperty()
+  @Matches(/^\S*$/, {
+    message: 'Username cannot contain spaces',
+  })
   @IsString()
   password: string;
 }

@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
@@ -12,6 +13,8 @@ import { BoardWithMembers } from 'src/board/board.interface';
 
 @Injectable()
 export class TaskService {
+  private readonly logger = new Logger(TaskService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async createTask(columnId: string, title: string) {
@@ -40,6 +43,31 @@ export class TaskService {
       where: { columnId },
       orderBy: { order: 'asc' }, // sort by order field
     });
+  }
+
+  async getTaskByIdWithTagsAndAssignees(taskId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        tags: true,
+        assignees: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!task) {
+      throw new NotFoundException(`Task with ID ${taskId} not found`);
+    }
+
+    return task;
   }
 
   async reorderTasks(columnId: string, taskOrder: TaskOrder[]) {
@@ -90,39 +118,83 @@ export class TaskService {
     });
   }
 
-  async deleteTask(taskId: string) {
-    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
-    if (!task) throw new NotFoundException('Task not found');
+  async deleteTask(taskId: string): Promise<void> {
+    const taskToDelete = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      select: { columnId: true, order: true },
+    });
 
-    return this.prisma.task.delete({ where: { id: taskId } });
+    if (!taskToDelete) {
+      this.logger.warn(`Attempted to delete non-existent task with ID: ${taskId}`);
+      throw new NotFoundException('Task not found');
+    }
+
+    try {
+      await this.prisma.$transaction(async (prisma) => {
+        // 1. Delete associated TaskAssignee records
+        await prisma.taskAssignee.deleteMany({
+          where: { taskId: taskId },
+        });
+        this.logger.log(`Deleted assignees for task ID: ${taskId}`);
+
+        // 2. Delete the Task
+        await prisma.task.delete({
+          where: { id: taskId },
+        });
+        this.logger.log(`Successfully deleted task with ID: ${taskId}`);
+
+        // 3. Reorder the remaining tasks in the same column
+        const remainingTasks = await prisma.task.findMany({
+          where: { columnId: taskToDelete.columnId, order: { gt: taskToDelete.order } },
+          orderBy: { order: 'asc' },
+        });
+
+        await Promise.all(
+          remainingTasks.map((task, index) =>
+            prisma.task.update({
+              where: { id: task.id },
+              data: { order: taskToDelete.order + index },
+            }),
+          ),
+        );
+        this.logger.log(
+          `Reordered ${remainingTasks.length} tasks in column ID: ${taskToDelete.columnId} after deleting task ID: ${taskId}`,
+        );
+      });
+    } catch (error) {
+      this.logger.error(`Error deleting task with ID: ${taskId}: ${error}`);
+      throw error;
+    }
   }
 
   async moveTaskToColumn(taskId: string, targetColumnId: string, newOrder: number) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Task not found');
 
-    const column = await this.prisma.column.findUnique({ where: { id: targetColumnId } });
-    if (!column) throw new NotFoundException('Target column not found');
+    const sourceColumnId = task.columnId; // Identify the source column
 
-    const count = await this.prisma.task.count({
+    const targetColumn = await this.prisma.column.findUnique({ where: { id: targetColumnId } });
+    if (!targetColumn) throw new NotFoundException('Target column not found');
+
+    const targetColumnCount = await this.prisma.task.count({
       where: { columnId: targetColumnId },
     });
 
-    // Clamp newOrder to be in range [1, count + 1]
-    const clampedOrder = Math.max(1, Math.min(newOrder, count + 1));
+    // Clamp newOrder for the target column
+    const clampedTargetOrder = Math.max(1, Math.min(newOrder, targetColumnCount + 1));
 
-    // Temporarily set order to avoid conflict
+    // Temporarily set order of the moved task to avoid conflicts in the target column
     await this.prisma.task.update({
       where: { id: taskId },
       data: { order: -1000 },
     });
 
-    // Shift tasks in target column
+    // Shift tasks in the target column
     await this.prisma.task.updateMany({
       where: {
         columnId: targetColumnId,
         order: {
-          gte: clampedOrder,
+          gte: clampedTargetOrder,
         },
       },
       data: {
@@ -130,14 +202,42 @@ export class TaskService {
       },
     });
 
-    // Move the task
-    return this.prisma.task.update({
+    // Move the task to the target column with the new order
+    const updatedTask = await this.prisma.task.update({
       where: { id: taskId },
       data: {
         columnId: targetColumnId,
-        order: clampedOrder,
+        order: clampedTargetOrder,
       },
     });
+
+    // Reorder tasks in the source column if the task was moved to a different column
+    if (sourceColumnId !== targetColumnId) {
+      const sourceColumnTasks = await this.prisma.task.findMany({
+        where: { columnId: sourceColumnId },
+        orderBy: { order: 'asc' },
+      });
+
+      // Decrement the order of tasks that were after the moved task
+      await this.prisma.task.updateMany({
+        where: {
+          columnId: sourceColumnId,
+          order: { gt: task.order },
+        },
+        data: {
+          order: { decrement: 1 },
+        },
+      });
+
+      // Finally, re-assign sequential order to the remaining tasks in the source column
+      for (const [index, t] of sourceColumnTasks.entries()) {
+        await this.prisma.task.update({
+          where: { id: t.id },
+          data: { order: index + 1 },
+        });
+      }
+    }
+    return updatedTask;
   }
 
   async addTagToTask(taskId: string, name: string) {

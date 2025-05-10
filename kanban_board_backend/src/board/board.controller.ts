@@ -10,6 +10,7 @@ import { UpdateColumnDto } from 'src/column/dto/update-column.dto';
 import { ColumnOrderDto } from 'src/column/dto/order-column.dto';
 import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
 import { BoardOwnerGuard } from 'src/common/guards/board-owner.guard';
+import { BoardAccessGuard } from 'src/common/guards/board-access.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('board')
@@ -26,9 +27,9 @@ export class BoardController {
   }
 
   @UseGuards(BoardOwnerGuard)
-  @Post(':id/members')
-  addMember(@Param('id') id: string, @Body() dto: AddBoardMemberDto) {
-    return this.boardService.addMember(id, dto.userId);
+  @Post(':boardId/members')
+  addMember(@Param('boardId') boardId: string, @Body() dto: AddBoardMemberDto) {
+    return this.boardService.addMember(boardId, dto.userId);
   }
 
   @Get()
@@ -36,44 +37,55 @@ export class BoardController {
     return this.boardService.findAllByUser(req.user.userId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.boardService.findOne(id);
-  } //need to addd just to get init board
+  @UseGuards(BoardAccessGuard)
+  @Get(':boardId/initial')
+  getInitialBoard(@Param('boardId') boardId: string) {
+    return this.boardService.findInitialBoardByBoardId(boardId);
+  }
 
-  @UseGuards(BoardOwnerGuard)
-  @Put(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateBoardDto) {
-    return this.boardService.update(id, dto);
+  @UseGuards(BoardAccessGuard)
+  @Get(':boardId')
+  findOne(@Param('boardId') boardId: string) {
+    return this.boardService.findOne(boardId);
   }
 
   @UseGuards(BoardOwnerGuard)
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.boardService.remove(id);
+  @Put(':boardId')
+  updateTitle(@Param('boardId') boardId: string, @Body() dto: UpdateBoardDto) {
+    return this.boardService.updateTitle(boardId, dto);
   }
 
-  // Column Management
+  @UseGuards(BoardOwnerGuard)
+  @Delete(':boardId')
+  remove(@Param('boardId') boardId: string) {
+    return this.boardService.remove(boardId);
+  }
+
+  @UseGuards(BoardAccessGuard)
   @Post(':boardId/columns')
   createColumn(@Param('boardId') boardId: string, @Body() dto: CreateColumnDto) {
     return this.columnService.createColumn(boardId, dto.name);
   }
 
+  @UseGuards(BoardAccessGuard)
   @Get(':boardId/columns')
   getColumns(@Param('boardId') boardId: string) {
     return this.columnService.getColumns(boardId);
   }
 
+  @UseGuards(BoardAccessGuard)
   @Put('columns/:columnId')
   updateNameColumn(@Param('columnId') columnId: string, @Body() dto: UpdateColumnDto) {
     return this.columnService.updateNameColumn(columnId, dto.name);
   }
 
+  @UseGuards(BoardAccessGuard)
   @Put(':boardId/columns/reorder')
   reorderColumns(@Param('boardId') boardId: string, @Body() columnOrder: ColumnOrderDto[]) {
     return this.columnService.reorderColumns(boardId, columnOrder);
   }
 
+  @UseGuards(BoardAccessGuard)
   @Delete('columns/:columnId')
   deleteColumn(@Param('columnId') columnId: string) {
     return this.columnService.deleteColumn(columnId);

@@ -1,9 +1,7 @@
-import { IsString, IsNumber } from 'class-validator';
+import { IsDefined, IsUUID } from 'class-validator';
 
 export class ColumnOrderDto {
-  @IsString()
+  @IsDefined()
+  @IsUUID()
   columnId: string;
-
-  @IsNumber()
-  newOrder: number;
 }
