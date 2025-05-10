@@ -2,13 +2,14 @@ import { Controller, Get, Post, Body, Param, Delete, Put, Req, UseGuards } from 
 import { BoardService } from './board.service';
 import { CreateBoardDto } from './dto/create-board.dto';
 import { UpdateBoardDto } from './dto/update-board.dto';
-import { AuthRequest } from 'src/interface/jwtRequest';
 import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 import { AddBoardMemberDto } from './dto/add-board-member.dto';
 import { ColumnService } from 'src/column/column.service';
 import { CreateColumnDto } from 'src/column/dto/create-column.dto';
 import { UpdateColumnDto } from 'src/column/dto/update-column.dto';
 import { ColumnOrderDto } from 'src/column/dto/order-column.dto';
+import { AuthRequest } from 'src/common/interfaces/auth-request.interface';
+import { BoardOwnerGuard } from 'src/common/guards/board-owner.guard';
 
 @UseGuards(JwtAuthGuard)
 @Controller('board')
@@ -24,9 +25,10 @@ export class BoardController {
     return this.boardService.create(dto, req.user.userId);
   }
 
+  @UseGuards(BoardOwnerGuard)
   @Post(':id/members')
-  addMember(@Param('id') boardId: string, @Body() dto: AddBoardMemberDto) {
-    return this.boardService.addMember(boardId, dto.userId);
+  addMember(@Param('id') id: string, @Body() dto: AddBoardMemberDto) {
+    return this.boardService.addMember(id, dto.userId);
   }
 
   @Get()
@@ -37,13 +39,15 @@ export class BoardController {
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.boardService.findOne(id);
-  }
+  } //need to addd just to get init board
 
+  @UseGuards(BoardOwnerGuard)
   @Put(':id')
   update(@Param('id') id: string, @Body() dto: UpdateBoardDto) {
     return this.boardService.update(id, dto);
   }
 
+  @UseGuards(BoardOwnerGuard)
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.boardService.remove(id);

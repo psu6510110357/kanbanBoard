@@ -44,6 +44,9 @@ importers:
       class-validator:
         specifier: ^0.14.2
         version: 0.14.2
+      express-serve-static-core:
+        specifier: ^0.1.1
+        version: 0.1.1
       passport:
         specifier: ^0.7.0
         version: 0.7.0
@@ -2163,6 +2166,9 @@ packages:
     engines: {node: '>= 16'}
     peerDependencies:
       express: ^4.11 || 5 || ^5.0.0-beta.1
+
+  express-serve-static-core@0.1.1:
+    resolution: {integrity: sha512-phQFPo1vVwBLOjDq+EspUY6PpWZIs/s62Lvu6QuReViQ9j9ANBnMqPBRwdxs3zxNmpMJ9KBKrmMqCjMwHnGRyQ==}
 
   express@5.1.0:
     resolution: {integrity: sha512-DT9ck5YIRU+8GYzzU5kT3eHGA5iL+1Zd0EutOmTE9Dtk+Tvuzd23VBU+ec7HPNSTxXYO55gPV/hq4pSBJDjFpA==}
@@ -6107,6 +6113,8 @@ snapshots:
   express-rate-limit@7.5.0(express@5.1.0):
     dependencies:
       express: 5.1.0
+
+  express-serve-static-core@0.1.1: {}
 
   express@5.1.0:
     dependencies:

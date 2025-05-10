@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { TaskOrder } from 'src/interface/taskOrder';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { TaskOrder } from './task.interface';
+import { BoardWithMembers } from 'src/board/board.interface';
 
 @Injectable()
 export class TaskService {
@@ -199,6 +201,102 @@ export class TaskService {
         },
       },
       include: { tags: true },
+    });
+  }
+
+  async assignMemberToTask(taskId: string, userId: string, currentUserId: string) {
+    const task = await this.getTaskWithBoard(taskId);
+
+    const board = task.column.board;
+
+    this.ensureAssignerIsAuthorized(board, currentUserId);
+    this.ensureAssigneeIsAuthorized(board, userId);
+
+    const isAlreadyAssigned = await this.prisma.taskAssignee.findUnique({
+      where: {
+        taskId_userId: { taskId, userId },
+      },
+    });
+
+    if (isAlreadyAssigned) {
+      throw new ConflictException('User already assigned to this task');
+    }
+
+    const assignee = await this.prisma.taskAssignee.create({
+      data: {
+        taskId,
+        userId,
+      },
+    });
+
+    // 🔔 Optional: Trigger a notification
+    // this.notificationService.notifyUser(userId, `You've been assigned to task ${task.title}`);
+
+    return assignee;
+  }
+
+  private async getTaskWithBoard(taskId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { id: taskId },
+      include: {
+        column: {
+          include: {
+            board: {
+              include: {
+                members: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+    return task;
+  }
+
+  private ensureAssignerIsAuthorized(board: BoardWithMembers, currentUserId: string) {
+    const isAuthorized =
+      board.ownerId === currentUserId || board.members.some((m) => m.userId === currentUserId);
+
+    if (!isAuthorized) {
+      throw new ForbiddenException('You cannot assign users on this board');
+    }
+  }
+
+  private ensureAssigneeIsAuthorized(board: BoardWithMembers, userId: string) {
+    const isAuthorized = board.ownerId === userId || board.members.some((m) => m.userId === userId);
+
+    if (!isAuthorized) {
+      throw new BadRequestException('User is not a member of the board');
+    }
+  }
+
+  async unassignMemberFromTask(taskId: string, userId: string) {
+    // ensure task exists
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+
+    // ensure user exists
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('User not found');
+
+    // Check if user is assigned to task
+    const assignee = await this.prisma.taskAssignee.findUnique({
+      where: {
+        taskId_userId: {
+          taskId,
+          userId,
+        },
+      },
+    });
+
+    if (!assignee) {
+      throw new BadRequestException('This user is not assigned to the task');
+    }
+
+    return this.prisma.taskAssignee.delete({
+      where: { id: assignee.id },
     });
   }
 }

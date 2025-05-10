@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ColumnOrder } from 'src/interface/columnOrder';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { ColumnOrder } from './column.interface';
 
 @Injectable()
 export class ColumnService {

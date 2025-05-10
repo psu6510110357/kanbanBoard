@@ -31,9 +31,23 @@ export class BoardService {
         ],
       },
       include: {
-        owner: true,
+        owner: {
+          select: {
+            id: true,
+            username: true,
+            // DO NOT include password
+          },
+        },
         members: {
-          include: { user: true },
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                // DO NOT include password
+              },
+            },
+          },
         },
       },
     });
@@ -43,7 +57,13 @@ export class BoardService {
     const board = await this.prisma.board.findUnique({
       where: { id },
       include: {
-        owner: true,
+        owner: {
+          select: {
+            id: true,
+            username: true,
+            // DO NOT include password
+          },
+        },
         members: {
           include: { user: true },
         },
@@ -84,10 +104,15 @@ export class BoardService {
   }
 
   async addMember(boardId: string, userId: string) {
+    const board = await this.prisma.board.findUnique({
+      where: { id: boardId },
+    });
+
+    if (!board) throw new NotFoundException('Board not found');
+
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    // check for duplicate
     const exists = await this.prisma.boardMember.findUnique({
       where: {
         userId_boardId: {

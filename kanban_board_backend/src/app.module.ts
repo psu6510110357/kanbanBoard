@@ -8,6 +8,7 @@ import { BoardModule } from './board/board.module';
 import { ColumnService } from './column/column.service';
 import { ColumnModule } from './column/column.module';
 import { TaskModule } from './task/task.module';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TaskModule } from './task/task.module';
     BoardModule,
     ColumnModule,
     TaskModule,
+    CommonModule,
   ],
   controllers: [AppController],
   providers: [AppService, ColumnService],
